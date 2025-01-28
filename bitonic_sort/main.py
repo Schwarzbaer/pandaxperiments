@@ -65,17 +65,17 @@ card = SSBOCard(base.render, ssbo)
 rng = PermutedCongruentialGenerator(ssbo)
 sorter = BitonicSort(ssbo, 'red')
 total_time = 0
-rng.fill()
-# tic = time.perf_counter()
-# for i in range(100):
-sorter.sort()
-#data = base.win.gsg.get_engine().extract_shader_buffer_data(
-#    ssbo.get_buffer(),
-#    base.win.gsg,
-#)
-#toc = time.perf_counter()
-#total_time = toc-tic
-#print(total_time/100)
+tic = time.perf_counter()
+for i in range(100):
+    rng.fill()
+    # sorter.sort()
+    data = base.win.gsg.get_engine().extract_shader_buffer_data(
+        ssbo.get_buffer(),
+        base.win.gsg,
+    )
+toc = time.perf_counter()
+total_time = toc-tic
+print(total_time/100)
 #data_2 = array('f', data).tolist()
 # print(data_2)
 base.run()
