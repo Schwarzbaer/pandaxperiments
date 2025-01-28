@@ -6,7 +6,7 @@ from panda3d.core import ShaderAttrib
 pcg_rng_source = """#version 430
 #extension GL_ARB_gpu_shader_int64 : require
 
-layout (local_size_x = 128, local_size_y = 1) in;
+layout (local_size_x = 32, local_size_y = 1) in;
 
 struct Data {
   float red;
@@ -57,7 +57,7 @@ class PermutedCongruentialGenerator:
         np = NodePath("dummy")
         np.set_shader(pcg_shader)
         np.set_shader_input("DataBuffer", ssbo.get_buffer())
-        workgroups = (ssbo.get_num_elements() // 128, 1, 1)
+        workgroups = (ssbo.get_num_elements() // 32, 1, 1)
         self.np = np
         self.workgroups = workgroups
 
