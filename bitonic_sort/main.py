@@ -49,22 +49,25 @@ base.cam.set_pos(0.5, -2.0, 0.5)
 base.accept('escape', base.task_mgr.stop)
 
 
-num_elements = 2**20
+num_elements = 2**20 * 4
 struct = Struct(red='f')
 #initial_data = [random.random() for i in range(num_elements)]
 ssbo = SSBO(struct, num_elements)
 card = SSBOCard(base.render, ssbo)
 rng = PermutedCongruentialGenerator(ssbo)
 #sorter = BitonicSort(ssbo, 'red')
-tic = time.perf_counter_ns()
-rng.fill()
-#sorter.sort()
-data = base.win.gsg.get_engine().extract_shader_buffer_data(
-    ssbo.get_buffer(),
-    base.win.gsg,
-)
-toc = time.perf_counter_ns()
+total_time = 0
+for i in range(1000):
+    tic = time.perf_counter()
+    rng.fill()
+    #sorter.sort()
+    data = base.win.gsg.get_engine().extract_shader_buffer_data(
+        ssbo.get_buffer(),
+        base.win.gsg,
+    )
+    toc = time.perf_counter()
+    total_time += toc-tic
+print(total_time/1000)
 data_2 = array('f', data).tolist()
-print(toc-tic)
 # print(data_2)
 base.run()
