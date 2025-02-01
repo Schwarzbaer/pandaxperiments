@@ -1,35 +1,28 @@
 from math import log2
 
+from jinja2 import Template
+
 from panda3d.core import NodePath
 from panda3d.core import Shader
 from panda3d.core import ShaderAttrib
 
 
-# FIXME
-# * Abstract out `red` to key field.
-# * Make workgroup size settable.
-
-
-sorter_source = """#version 430
+sorter_template = """#version 430
 layout (local_size_x = 32, local_size_y = 1) in;
 
-struct Data {
-  float red;
-};
+{{struct}}
 
-layout(std430) buffer DataBuffer {
-  Data data[];
-};
+{{ssbo}}
 
 uniform int span;
 uniform int reverseSpan;
 
 void compare(int low, int high) {
-  Data dataLow = data[low];
-  Data dataHigh = data[high];
-  if (dataLow.red > dataHigh.red) {
-    data[low] = dataHigh;
-    data[high] = dataLow;
+  {{type_name}} dataLow = {{array_name}}[low];
+  {{type_name}} dataHigh = {{array_name}}[high];
+  if (dataLow.{{key}} > dataHigh.{{key}}) {
+    {{array_name}}[low] = dataHigh;
+    {{array_name}}[high] = dataLow;
   }
 }
 
@@ -58,10 +51,19 @@ void main() {
 class BitonicSort:
     def __init__(self, ssbo, key):
         num_elements = ssbo.get_num_elements()
-        sort_shader = Shader.make_compute(Shader.SL_GLSL, sorter_source)
+        render_args = dict(
+            struct=ssbo.struct.glsl(),
+            ssbo=ssbo.glsl(),
+            type_name=ssbo.struct.type_name,
+            array_name=ssbo.array_name,
+            key=key,
+        )
+        template = Template(sorter_template)
+        source = template.render(**render_args)
+        shader = Shader.make_compute(Shader.SL_GLSL, source)
         np = NodePath("dummy")
-        np.set_shader(sort_shader)
-        np.set_shader_input("DataBuffer", ssbo.get_buffer())
+        np.set_shader(shader)
+        np.set_shader_input(ssbo.buffer_name, ssbo.get_buffer())
         workgroups = (num_elements // 32, 1, 1)
         sorter_arrays = []
         for e in range(int(log2(num_elements))):
