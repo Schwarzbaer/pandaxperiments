@@ -10,8 +10,6 @@ from panda3d.core import ShaderAttrib
 sorter_template = """#version 430
 layout (local_size_x = 32, local_size_y = 1) in;
 
-{{struct}}
-
 {{ssbo}}
 
 uniform int span;
@@ -49,17 +47,19 @@ void main() {
 
 
 class BitonicSort:
-    def __init__(self, ssbo, key):
-        num_elements = ssbo.get_num_elements()
+    def __init__(self, ssbo, array_and_key):
+        array_name, key = array_and_key
+        num_elements = ssbo.get_num_elements(array_name)
         render_args = dict(
-            struct=ssbo.struct.glsl(),
             ssbo=ssbo.glsl(),
-            type_name=ssbo.struct.type_name,
-            array_name=ssbo.array_name,
+            type_name=ssbo[array_name].type_name,
+            array_name=array_name,
             key=key,
         )
         template = Template(sorter_template)
         source = template.render(**render_args)
+        print(source)
+        #import pdb; pdb.set_trace()
         shader = Shader.make_compute(Shader.SL_GLSL, source)
         np = NodePath("dummy")
         np.set_shader(shader)

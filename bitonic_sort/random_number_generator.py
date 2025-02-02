@@ -10,8 +10,6 @@ pcg_rng_template = """#version 430
 
 layout (local_size_x = 32, local_size_y = 1) in;
 
-{{struct}}
-
 {{ssbo}}
 
 uint64_t state = 0;
@@ -49,12 +47,12 @@ void main() {
 
 
 class PermutedCongruentialGenerator:
-    def __init__(self, ssbo, key):
+    def __init__(self, ssbo, array_and_key):
+        array_name, key = array_and_key
         render_args = dict(
-            struct=ssbo.struct.glsl(),
             ssbo=ssbo.glsl(),
-            type_name=ssbo.struct.type_name,
-            array_name=ssbo.array_name,
+            type_name=ssbo[array_name].type_name,
+            array_name=array_name,
             key=key,
         )
         template = Template(pcg_rng_template)
@@ -63,7 +61,7 @@ class PermutedCongruentialGenerator:
         np = NodePath("dummy")
         np.set_shader(shader)
         np.set_shader_input(ssbo.buffer_name, ssbo.get_buffer())
-        workgroups = (ssbo.get_num_elements() // 32, 1, 1)
+        workgroups = (ssbo.get_num_elements(array_name) // 32, 1, 1)
         self.np = np
         self.workgroups = workgroups
 

@@ -1,3 +1,5 @@
+from jinja2 import Template
+
 from panda3d.core import CardMaker
 from panda3d.core import Shader
 
@@ -15,36 +17,38 @@ void main() {
 }
 """
 
-fragment_source = """#version 430
+fragment_template = """#version 430
 uniform sampler2D p3d_Texture0;
 
 in vec2 v_texcoord;
 
 out vec4 p3d_FragColor;
 
-struct Data {
-  float red;
-};
-
-layout(std430) buffer DataBuffer {
-  Data data[];
-};
+{{ssbo}}
 
 void main() {
   int idx = int(floor(v_texcoord.x * float(data.length())));
-  p3d_FragColor = vec4(data[idx].red, 0, 0, 1);
+  p3d_FragColor = vec4({{array}}[idx].{{key}}, 0, 0, 1);
 }
 """
 
 
 class SSBOCard:
-    def __init__(self, parent, ssbo):
-        cm = CardMaker('card')
-        card = parent.attach_new_node(cm.generate())
+    def __init__(self, parent, ssbo, array_and_key):
+        array_name, key = array_and_key
+        render_args = dict(
+            ssbo=ssbo.glsl(),
+            array=array_name,
+            key=key,
+        )
+        template = Template(fragment_template)
+        fragment_source = template.render(**render_args)
         vis_shader = Shader.make(
             Shader.SL_GLSL,
             vertex = vertex_source,
             fragment = fragment_source,
         )
+        cm = CardMaker('card')
+        card = parent.attach_new_node(cm.generate())
         card.set_shader(vis_shader)
         card.set_shader_input("DataBuffer", ssbo.get_buffer())
