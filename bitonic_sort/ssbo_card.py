@@ -27,7 +27,7 @@ out vec4 p3d_FragColor;
 {{ssbo}}
 
 void main() {
-  int idx = int(floor(v_texcoord.x * float(data.length())));
+  int idx = int(floor(v_texcoord.x * float({{array}}.length())));
   p3d_FragColor = vec4({{array}}[idx].{{key}}, 0, 0, 1);
 }
 """
@@ -51,4 +51,4 @@ class SSBOCard:
         cm = CardMaker('card')
         card = parent.attach_new_node(cm.generate())
         card.set_shader(vis_shader)
-        card.set_shader_input("DataBuffer", ssbo.get_buffer())
+        card.set_shader_input(ssbo.buffer_name, ssbo.get_buffer())
