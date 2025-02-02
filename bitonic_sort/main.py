@@ -1,6 +1,5 @@
 # TODO
 #
-# * SSBOs can have multiple arrays.
 # * Give RNG list of attributes to fill, and distributions to do it.
 # * Let dev choose between the current explicit dispatches, and
 #   in-scenegraph ones.
@@ -8,6 +7,7 @@
 # * Bitonic sort: Make it work on other sizes than power-of-2s.
 # * Add spatial hash grids.
 # * Add particle visualization.
+
 
 import random
 import time

@@ -58,8 +58,6 @@ class BitonicSort:
         )
         template = Template(sorter_template)
         source = template.render(**render_args)
-        print(source)
-        #import pdb; pdb.set_trace()
         shader = Shader.make_compute(Shader.SL_GLSL, source)
         np = NodePath("dummy")
         np.set_shader(shader)
