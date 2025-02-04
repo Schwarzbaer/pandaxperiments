@@ -52,3 +52,7 @@ class SSBOCard:
         card = parent.attach_new_node(cm.generate())
         card.set_shader(vis_shader)
         card.set_shader_input(ssbo.buffer_name, ssbo.get_buffer())
+        self.card = card
+
+    def get_np(self):
+        return self.card

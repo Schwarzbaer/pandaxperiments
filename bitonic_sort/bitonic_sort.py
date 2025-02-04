@@ -2,7 +2,9 @@ from math import log2
 
 from jinja2 import Template
 
+from panda3d.core import BoundingVolume
 from panda3d.core import NodePath
+from panda3d.core import ComputeNode
 from panda3d.core import Shader
 from panda3d.core import ShaderAttrib
 
@@ -59,21 +61,20 @@ class BitonicSort:
         template = Template(sorter_template)
         source = template.render(**render_args)
         shader = Shader.make_compute(Shader.SL_GLSL, source)
-        np = NodePath("dummy")
-        np.set_shader(shader)
-        np.set_shader_input(ssbo.buffer_name, ssbo.get_buffer())
         workgroups = (num_elements // 32, 1, 1)
         sorter_arrays = []
         for e in range(int(log2(num_elements))):
             for s in range(e, -1, -1):
                 sorter_arrays.append((2**s, 2**(e-s)))
-        self.np = np
+        self.shader = shader
         self.workgroups = workgroups
         self.sorter_arrays = sorter_arrays
 
-    def sort(self):
+    def dispatch(self):
+        np = NodePath("dummy")
+        np.set_shader(shader)
+        np.set_shader_input(ssbo.buffer_name, ssbo.get_buffer())
         for span, reverse_span in self.sorter_arrays:
-            np = self.np
             np.set_shader_input('span', span)
             np.set_shader_input('reverseSpan', reverse_span)
             sattr = np.get_attrib(ShaderAttrib)
@@ -82,3 +83,15 @@ class BitonicSort:
                 sattr,
                 base.win.get_gsg(),
             )
+
+    def attach(self, np, bin_sort=0):
+        for idx, (span, reverse_span) in enumerate(self.sorter_arrays):
+            cn = ComputeNode(f"BitonicSort-{idx}")
+            cn.add_dispatch(self.workgroups)
+            cnnp = np.attach_new_node(cn)
+            cnnp.set_shader(self.shader)
+            cnnp.set_shader_input('span', span)
+            cnnp.set_shader_input('reverseSpan', reverse_span)
+            cnnp.set_bin("preliminary_compute_pass", bin_sort, 0)
+            cn.set_bounds_type(BoundingVolume.BT_box)
+            cn.set_bounds(np.get_bounds())
