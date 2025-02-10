@@ -1,5 +1,6 @@
 from jinja2 import Template
 
+from panda3d.core import Vec3
 from panda3d.core import BoundingVolume
 from panda3d.core import NodePath
 from panda3d.core import ComputeNode
@@ -39,26 +40,50 @@ void pcg32_init(uint64_t seed)
     pcg32();
 }
 
+float pcgf()
+{
+    return (pcg32() / float((2<<62) - 1)) / 2.0;
+}
+
 void main() {
   int idx = int(gl_GlobalInvocationID.x);
   pcg32_init(uint64_t(idx));
-  {{array_name}}[idx].{{key}} = float(pcg32()) / float((2<<62) - 1) / 2;
 
+  {% for array, key, field_type, dist in targets %}// {{array}}.{{key}} = {{field_type}} {{dist}}
+  {% if field_type=='float' %}{{array}}[idx].{{key}} = pcgf();
+  {% elif field_type=='vec3' %}{{array}}[idx].{{key}} = vec3(pcgf(), pcgf(), pcgf());
+  {% endif %}{% endfor %}
 }
 """
 
 
 class PermutedCongruentialGenerator:
-    def __init__(self, ssbo, array_and_key):
-        array_name, key = array_and_key
+    types_py2template = {
+        float: 'float',
+        Vec3: 'vec3',
+    }
+    def __init__(self, ssbo, *targets, debug=False):
+        rng_specs = []
+        for target in targets:
+            if len(target) == 2:
+                array_name, key = target
+                distribution = 'uniform'
+            else:
+                array_name, key, distribution = target
+            struct = ssbo.arrays[array_name]
+            field_type = self.types_py2template[struct.fields[key]]
+            rng_specs.append(
+                (array_name, key, field_type, distribution)
+            )
         render_args = dict(
             ssbo=ssbo.glsl(),
-            type_name=ssbo[array_name].type_name,
-            array_name=array_name,
-            key=key,
+            targets=rng_specs,
         )
         template = Template(pcg_rng_template)
         source = template.render(**render_args)
+        if debug:
+            for line_nr, line_txt in enumerate(source.split('\n')):
+                print(f"{line_nr:4d}  {line_txt}")
         shader = Shader.make_compute(Shader.SL_GLSL, source)
         workgroups = (ssbo.get_num_elements(array_name) // 32, 1, 1)
         self.ssbo = ssbo

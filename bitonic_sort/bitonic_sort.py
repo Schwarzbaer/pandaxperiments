@@ -49,7 +49,7 @@ void main() {
 
 
 class BitonicSort:
-    def __init__(self, ssbo, array_and_key):
+    def __init__(self, ssbo, array_and_key, debug=False):
         array_name, key = array_and_key
         num_elements = ssbo.get_num_elements(array_name)
         render_args = dict(
@@ -60,20 +60,24 @@ class BitonicSort:
         )
         template = Template(sorter_template)
         source = template.render(**render_args)
+        if debug:
+            for line_nr, line_txt in enumerate(source.split('\n')):
+                print(f"{line_nr:4d}  {line_txt}")
         shader = Shader.make_compute(Shader.SL_GLSL, source)
-        workgroups = (num_elements // 32, 1, 1)
+        workgroups = (num_elements // 64, 1, 1)
+        self.ssbo = ssbo
+        self.shader = shader
+        self.workgroups = workgroups
         sorter_arrays = []
         for e in range(int(log2(num_elements))):
             for s in range(e, -1, -1):
                 sorter_arrays.append((2**s, 2**(e-s)))
-        self.shader = shader
-        self.workgroups = workgroups
         self.sorter_arrays = sorter_arrays
 
     def dispatch(self):
         np = NodePath("dummy")
-        np.set_shader(shader)
-        np.set_shader_input(ssbo.buffer_name, ssbo.get_buffer())
+        np.set_shader(self.shader)
+        np.set_shader_input(self.ssbo.buffer_name, self.ssbo.get_buffer())
         for span, reverse_span in self.sorter_arrays:
             np.set_shader_input('span', span)
             np.set_shader_input('reverseSpan', reverse_span)
@@ -90,6 +94,7 @@ class BitonicSort:
             cn.add_dispatch(self.workgroups)
             cnnp = np.attach_new_node(cn)
             cnnp.set_shader(self.shader)
+            cnnp.set_shader_input(self.ssbo.buffer_name, self.ssbo.get_buffer())
             cnnp.set_shader_input('span', span)
             cnnp.set_shader_input('reverseSpan', reverse_span)
             cnnp.set_bin("preliminary_compute_pass", bin_sort, 0)

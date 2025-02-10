@@ -1,29 +1,35 @@
 from array import array
 
+from panda3d.core import Vec3
 from panda3d.core import ShaderBuffer
 from panda3d.core import GeomEnums
 
 
 class Struct:
-    types_array2glsl = dict(
-        f="float",
-    )
+    types_py2glsl = {
+        float: 'float',
+        Vec3: 'vec3',
+    }
+    types_py2array = {
+        float: 'f',
+        Vec3: 'ffff',
+    }
     
     def __init__(self, type_name, **fields):
         self.type_name = type_name
         self.fields = fields
-        self.array_string = ''.join(self.fields.values())
+        self.array_string = ''.join([self.types_py2array[t] for t in fields.values()])
 
     def convert_to_bytes(self, data):
         return array(self.array_string, data).tobytes()
 
     def get_byte_size(self):
-        return array(self.array_string).itemsize
+        return sum([array(c).itemsize for c in self.array_string])
 
     def glsl(self):
         source = f"struct {self.type_name} {{\n"
         for field_name, field_type in self.fields.items():
-            glsl_type = self.types_array2glsl[field_type]
+            glsl_type = self.types_py2glsl[field_type]
             source += f"  {glsl_type} {field_name};\n"
         source += "};\n"
         return source
@@ -55,7 +61,7 @@ class SSBO:
             size_or_data = data
         # Create buffer and store additional data
         self.ssbo = ShaderBuffer(
-            'DataBuffer',
+            buffer_name,
             size_or_data,
             GeomEnums.UH_static,
         )
